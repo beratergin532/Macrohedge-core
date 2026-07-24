@@ -85,6 +85,30 @@
   .news-card { cursor:pointer; transition:.15s; border-radius:12px; padding:10px; margin:-10px; }
   .news-card:hover { background:#f8fafc; }
   .dark .news-card:hover { background:#1e293b; }
+
+  /* Core AI panel — subtle pulsing cyber-purple glow */
+  .ai-card-glow { position:relative; }
+  .ai-card-glow::after {
+    content:''; position:absolute; inset:0; border-radius:inherit;
+    box-shadow: 0 0 0 1px rgba(99,102,241,.10), 0 0 22px 0 rgba(99,102,241,.09);
+    animation: aiPulseGlow 3.4s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes aiPulseGlow {
+    0%,100% { box-shadow: 0 0 0 1px rgba(99,102,241,.10), 0 0 16px 0 rgba(99,102,241,.07); }
+    50% { box-shadow: 0 0 0 1px rgba(99,102,241,.24), 0 0 30px 2px rgba(99,102,241,.16); }
+  }
+
+  /* Watchlist favorite star */
+  .fav-star { font-size:14px; line-height:1; transition:.15s; opacity:.28; filter:grayscale(1); }
+  .fav-star:hover { opacity:.75; filter:grayscale(.4); transform:scale(1.1); }
+  .fav-star.active { opacity:1; filter:grayscale(0); }
+
+  /* Auth tabs */
+  .auth-tab { transition:.15s; }
+
+  /* Profile dropdown menu item */
+  .menu-item { transition:.12s; }
 </style>
 </head>
 
@@ -131,6 +155,34 @@
       <button onclick="toggleTheme()" id="themeToggleBtn" class="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition ml-1 text-sm font-semibold">
         <span id="themeToggleLabel">🌙 Gece</span>
       </button>
+      <button onclick="openTransactionHistoryModal()" title="İşlem Geçmişi" class="hidden sm:flex items-center justify-center h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+        <i data-lucide="history" class="w-4 h-4"></i>
+      </button>
+
+      <!-- User profile avatar + Giriş Yap Butonu -->
+<div class="relative ml-1 flex items-center gap-2">
+  <button id="navLoginBtn" onclick="openAuthModal('login')" class="hidden text-xs font-semibold bg-accent hover:bg-indigo-800 text-white px-3.5 py-2 rounded-xl transition">Giriş Yap</button>
+  
+  <button onclick="toggleProfileMenu()" id="profileAvatarBtn"
+    class="avatar cursor-pointer ring-2 ring-white dark:ring-slate-900 hover:opacity-90 transition"
+    style="width:36px;height:36px;font-size:12px;background:linear-gradient(135deg,#4338ca,#7c3aed);">BE</button>
+
+  <div id="profileMenu" class="hidden absolute right-0 top-10 w-60 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden fade-in">
+    <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+      <p class="text-sm font-semibold">Berat Ergin</p>
+      <p class="text-[11px] text-slate-400 font-num">berat.ergin@macrohedge.com</p>
+    </div>
+    <button onclick="openProfileModal()" class="menu-item w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5">
+      <i data-lucide="user" class="w-4 h-4 text-slate-400"></i> Profilim
+    </button>
+    <button onclick="openTransactionHistoryModal()" class="menu-item w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5">
+      <span>📜</span> İşlem Geçmişi
+    </button>
+    <button onclick="handleLogout()" class="menu-item w-full text-left px-4 py-2.5 text-sm hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 flex items-center gap-2.5 border-t border-slate-100 dark:border-slate-800">
+      <i data-lucide="log-out" class="w-4 h-4"></i> Çıkış Yap
+    </button>
+  </div>
+</div>
     </div>
   </div>
 </header>
@@ -152,7 +204,10 @@
     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-bold">İzleme Listesi</h3>
-        <span class="text-[10px] font-num text-slate-400" id="watchlistCount">0 sembol</span>
+        <div class="flex items-center gap-2">
+          <button onclick="toggleFavFilter()" id="favFilterBtn" class="text-[10px] font-semibold px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 transition">⭐ Favoriler</button>
+          <span class="text-[10px] font-num text-slate-400" id="watchlistCount">0 sembol</span>
+        </div>
       </div>
       <div id="watchlist" class="space-y-1 max-h-[560px] overflow-y-auto pr-1"></div>
     </div>
@@ -191,42 +246,66 @@
       <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i> <span id="chartRangeLabel">Son 1 aylık kapanış verisi</span></p>
     </div>
 
-    <!-- Buy/Sell module -->
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
-      <h3 class="text-sm font-bold mb-3 flex items-center gap-2"><i data-lucide="repeat" class="w-4 h-4 text-accent"></i> Al / Sat Emir Kutusu</h3>
-
-      <div id="usWarning" class="hidden mb-3 text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-3 py-2.5 items-center gap-2 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-400">
-        <span id="usWarningText">⚡ ABD Hissesi alımında TL bakiyeniz anlık kurdan ($1 = ₺33.50) otomatik USD'ye dönüştürülür.</span>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Adet</label>
-          <input id="tradeQty" type="number" min="1" value="1" class="focus-ring w-full mt-1 px-3 py-2 text-sm font-num rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
-        </div>
-        <div>
-          <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Fiyat</label>
-          <input id="tradePrice" type="number" step="0.01" class="focus-ring w-full mt-1 px-3 py-2 text-sm font-num rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
-        </div>
-      </div>
-
-      <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
-        <span>Tahmini İşlem Tutarı</span>
-        <span class="font-num font-semibold text-ink dark:text-slate-200" id="estTotal">₺0,00</span>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3 mt-3">
-        <button onclick="submitTrade('buy')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm py-2.5 rounded-xl transition shadow-sm shadow-emerald-500/20">AL</button>
-        <button onclick="submitTrade('sell')" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-sm py-2.5 rounded-xl transition shadow-sm shadow-red-500/20">SAT</button>
-      </div>
-      <p id="tradeMsg" class="text-xs mt-2 hidden"></p>
+    
+ <!-- Buy/Sell module -->
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-sm font-bold flex items-center gap-2"><i data-lucide="repeat" class="w-4 h-4 text-accent"></i> Al / Sat Emir Kutusu</h3>
+    <!-- Adet / Tutar Seçim Modu -->
+    <div class="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+      <button onclick="switchTradeMode('qty')" id="tradeModeQtyBtn" class="px-3 py-1 rounded-lg bg-white dark:bg-slate-700 shadow-sm text-ink dark:text-white">Adet İle</button>
+      <button onclick="switchTradeMode('amount')" id="tradeModeAmtBtn" class="px-3 py-1 rounded-lg text-slate-400">Tutar İle (₺ / $)</button>
     </div>
+  </div>
+
+  <div id="usWarning" class="hidden mb-3 text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-3 py-2.5 items-center gap-2 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-400">
+    <span id="usWarningText">⚡ ABD Hissesi alımında TL bakiyeniz anlık kurdan ($1 = ₺33.50) otomatik USD'ye dönüştürülür.</span>
+  </div>
+
+  <!-- Adet Modu Girişi -->
+  <div id="tradeQtyContainer" class="grid grid-cols-2 gap-3">
+    <div>
+      <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Adet</label>
+      <input id="tradeQty" type="number" min="0.01" step="any" value="1" oninput="updateEstTotal()" class="focus-ring w-full mt-1 px-3 py-2 text-sm font-num rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+    </div>
+    <div>
+      <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Birim Fiyat</label>
+      <input id="tradePrice" type="number" step="0.01" oninput="updateEstTotal()" class="focus-ring w-full mt-1 px-3 py-2 text-sm font-num rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+    </div>
+  </div>
+
+  <!-- Tutar Modu Girişi -->
+  <div id="tradeAmountContainer" class="hidden grid grid-cols-2 gap-3">
+    <div>
+      <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">İşlem Tutarı (₺ / $)</label>
+      <input id="tradeTotalAmount" type="number" min="1" placeholder="Örn: 2000" oninput="updateEstQtyFromAmount()" class="focus-ring w-full mt-1 px-3 py-2 text-sm font-num rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+    </div>
+    <div>
+      <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Hesaplanan Adet</label>
+      <input id="tradeCalculatedQty" type="text" readonly disabled value="0" class="w-full mt-1 px-3 py-2 text-sm font-num rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500" />
+    </div>
+  </div>
+
+  <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
+    <span>Tahmini Toplam Tutar</span>
+    <span class="font-num font-semibold text-ink dark:text-slate-200" id="estTotal">₺0,00</span>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3 mt-3">
+    <button onclick="submitTrade('buy')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm py-2.5 rounded-xl transition shadow-sm shadow-emerald-500/20">AL</button>
+    <button onclick="submitTrade('sell')" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-sm py-2.5 rounded-xl transition shadow-sm shadow-red-500/20">SAT</button>
+  </div>
+  <p id="tradeMsg" class="text-xs mt-2 hidden"></p>
+</div>
   </section>
 
   <!-- ============ RIGHT: AI MACRO ENGINE + NEWS ============ -->
   <aside class="space-y-4 order-3">
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
-      <h3 class="text-sm font-bold flex items-center gap-2"><span>🤖</span> Gemini AI Macro Engine</h3>
+    <div class="ai-card-glow bg-white dark:bg-slate-900 border border-indigo-500/30 dark:border-indigo-500/50 shadow-lg shadow-indigo-500/10 rounded-2xl p-4">
+      <div class="flex items-center justify-between gap-2">
+        <h3 class="text-sm font-bold flex items-center gap-2"><span>🤖</span> Gemini AI Macro Engine</h3>
+        <span class="badge bg-indigo-50 text-accent dark:bg-indigo-500/10 dark:text-indigo-300">✨ CORE AI</span>
+      </div>
       <p class="text-[11px] text-slate-400 mt-1 mb-3">Makro senaryonuzu tanımlayın, portföy projeksiyonu alın.</p>
 
       <textarea id="aiScenario" rows="3" placeholder="Örn: Faiz indirimi sonrası 1-2 yıllık teknoloji ve altın projeksiyonu"
@@ -300,79 +379,203 @@
   </div>
 </div>
 
+<!-- ============ TRANSACTION HISTORY MODAL ============ -->
+<div id="txHistoryModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col fade-in">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+      <h3 class="font-bold text-base flex items-center gap-2"><span>📜</span> İşlem Geçmişi</h3>
+      <button onclick="closeTxHistoryModal()" class="text-slate-400 hover:text-ink dark:hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="overflow-y-auto flex-1">
+      <table class="w-full text-sm">
+        <thead class="sticky top-0 bg-slate-50 dark:bg-slate-800/80 backdrop-blur text-[11px] uppercase tracking-wide text-slate-400">
+          <tr>
+            <th class="text-left px-6 py-2.5 font-semibold">İşlem Tipi</th>
+            <th class="text-left px-3 py-2.5 font-semibold">Hisse Kodu</th>
+            <th class="text-right px-3 py-2.5 font-semibold">Adet</th>
+            <th class="text-right px-3 py-2.5 font-semibold">Birim Fiyat</th>
+            <th class="text-right px-3 py-2.5 font-semibold">Toplam Tutar</th>
+            <th class="text-right px-6 py-2.5 font-semibold">Tarih</th>
+          </tr>
+        </thead>
+        <tbody id="txHistoryBody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PROFILE MODAL ============ -->
+<div id="profileModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm fade-in">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-base">Profilim</h3>
+      <button onclick="closeProfileModal()" class="text-slate-400 hover:text-ink dark:hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="flex items-center gap-3 mb-5">
+      <div class="avatar" style="width:56px;height:56px;font-size:18px;background:linear-gradient(135deg,#4338ca,#7c3aed);">BE</div>
+      <div>
+        <p class="font-semibold text-sm">Berat Ergin</p>
+        <p class="text-[11px] text-slate-400 font-num">berat.ergin@macrohedge.com</p>
+      </div>
+    </div>
+    <div class="space-y-3 border-t border-slate-100 dark:border-slate-800 pt-4">
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-slate-400">Üyelik Türü</span>
+        <span class="font-semibold">Premium Yatırımcı</span>
+      </div>
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-slate-400">Toplam Varlık</span>
+        <span class="font-num font-semibold" id="profileTotalAssets">₺0,00</span>
+      </div>
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-slate-400">Kullanılabilir Nakit</span>
+        <span class="font-num font-semibold" id="profileCash">₺0,00</span>
+      </div>
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-slate-400">Açık Pozisyon</span>
+        <span class="font-num font-semibold" id="profilePositions">0</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ AUTH MODAL (Giriş Yap / Kayıt Ol) ============ -->
+<div id="authModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md fade-in overflow-hidden">
+    <div class="flex items-center justify-between px-6 pt-5">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">🏛️</span>
+        <h3 class="font-bold text-base">MacroHedge Core</h3>
+      </div>
+      <button onclick="closeAuthModal()" class="text-slate-400 hover:text-ink dark:hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+
+    <div class="flex px-6 gap-6 mt-4 border-b border-slate-100 dark:border-slate-800">
+      <button onclick="switchAuthTab('login')" id="authTabLogin" class="auth-tab flex-1 text-sm font-semibold pb-3 border-b-2 border-accent text-accent">Giriş Yap</button>
+      <button onclick="switchAuthTab('register')" id="authTabRegister" class="auth-tab flex-1 text-sm font-semibold pb-3 border-b-2 border-transparent text-slate-400">Kayıt Ol</button>
+    </div>
+
+    <div class="p-6 pt-5">
+      <div id="authLoginForm" class="space-y-3">
+        <div>
+          <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">E-posta</label>
+          <input id="loginEmail" type="email" placeholder="ornek@eposta.com" class="focus-ring w-full mt-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+        </div>
+        <div>
+          <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Şifre</label>
+          <input id="loginPassword" type="password" placeholder="••••••••" class="focus-ring w-full mt-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+        </div>
+        <button onclick="submitLogin()" class="w-full bg-accent hover:bg-indigo-800 text-white font-semibold text-sm py-2.5 rounded-xl transition mt-2">Giriş Yap</button>
+      </div>
+
+      <div id="authRegisterForm" class="hidden space-y-3">
+        <div>
+          <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Ad Soyad</label>
+          <input id="registerName" type="text" placeholder="Adınız Soyadınız" class="focus-ring w-full mt-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+        </div>
+        <div>
+          <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">E-posta</label>
+          <input id="registerEmail" type="email" placeholder="ornek@eposta.com" class="focus-ring w-full mt-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+        </div>
+        <div>
+          <label class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Şifre</label>
+          <input id="registerPassword" type="password" placeholder="••••••••" class="focus-ring w-full mt-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+        </div>
+        <button onclick="submitRegister()" class="w-full bg-accent hover:bg-indigo-800 text-white font-semibold text-sm py-2.5 rounded-xl transition mt-2">Kayıt Ol</button>
+      </div>
+
+      <p id="authMsg" class="hidden text-xs mt-3"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FULL-SCREEN AI HEDGE FUND REPORT MODAL ============ -->
+<div id="aiReportModal" class="hidden fixed inset-0 z-[60] bg-white dark:bg-slate-950 overflow-y-auto">
+  <div class="max-w-5xl mx-auto px-5 sm:px-8 py-8">
+    <div class="flex items-start justify-between gap-4 mb-6">
+      <div>
+        <span class="badge bg-indigo-50 text-accent dark:bg-indigo-500/10 dark:text-indigo-300">✨ CORE AI · HEDGE FUND RAPORU</span>
+        <h2 class="text-xl sm:text-2xl font-extrabold mt-2 leading-tight">Ayrıntılı Makro &amp; Portföy Analiz Raporu</h2>
+        <p class="text-[11px] text-slate-400 mt-1 font-num" id="aiReportDate"></p>
+      </div>
+      <button onclick="closeAiReportModal()" class="shrink-0 text-slate-400 hover:text-ink dark:hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-5">
+      <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+        <h3 class="text-sm font-bold mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4 text-accent"></i> Makro Senaryo Özeti</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-2 italic" id="aiReportScenario"></p>
+        <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed" id="aiReportSummary"></p>
+      </div>
+      <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+        <h3 class="text-sm font-bold mb-3 flex items-center gap-2"><i data-lucide="shield-alert" class="w-4 h-4 text-accent"></i> Risk Analizi</h3>
+        <div id="aiReportRisk"></div>
+      </div>
+    </div>
+
+    <div class="mt-5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+      <h3 class="text-sm font-bold mb-4 flex items-center gap-2"><i data-lucide="pie-chart" class="w-4 h-4 text-accent"></i> Sektör / Varlık Ağırlıkları</h3>
+      <div id="aiReportSectors"></div>
+    </div>
+
+    <div class="mt-5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+      <h3 class="text-sm font-bold mb-4 flex items-center gap-2"><i data-lucide="trending-up" class="w-4 h-4 text-accent"></i> 1-2 Yıllık Portföy Projeksiyonu</h3>
+      <div class="h-72"><canvas id="aiProjectionChart"></canvas></div>
+      <p id="aiProjectionNotes" class="mt-4 text-xs text-slate-500 dark:text-slate-400 leading-relaxed"></p>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ===================================================================
-   CONFIG
+   CONFIG & ENDPOINTS
 =================================================================== */
 const SPRING_API = 'http://localhost:8081/api/v1';
 const FASTAPI_API = 'http://localhost:8000/api/v1';
 const USD_TRY_FALLBACK = 33.50;
 
 /* ===================================================================
-   MOCK / FALLBACK DATA
-   (Backend her zaman ayakta olmayabilir; bu veriler sadece arayüzün
-   backend olmadan da demo edilebilmesi için fallback amaçlıdır.)
+   INITIAL UNIVERSE
 =================================================================== */
-const MOCK_UNIVERSE = [
-  { symbol:'THYAO.IS', name:'Türk Hava Yolları A.O.', market:'BIST', price:312.50, currency:'TRY' },
-  { symbol:'TURSG.IS', name:'Türkiye Sigorta A.Ş.', market:'BIST', price:16.42, currency:'TRY' },
-  { symbol:'GARAN.IS', name:'Garanti BBVA', market:'BIST', price:118.30, currency:'TRY' },
-  { symbol:'ASELS.IS', name:'Aselsan Elektronik', market:'BIST', price:71.85, currency:'TRY' },
-  { symbol:'TUPRS.IS', name:'Tüpraş', market:'BIST', price:164.20, currency:'TRY' },
-  { symbol:'AAPL', name:'Apple Inc.', market:'NASDAQ', price:231.40, currency:'USD' },
-  { symbol:'MSFT', name:'Microsoft Corp.', market:'NASDAQ', price:468.90, currency:'USD' },
-  { symbol:'NVDA', name:'NVIDIA Corp.', market:'NASDAQ', price:172.15, currency:'USD' },
+let MOCK_UNIVERSE = [
+  { symbol:'THYAO.IS', name:'Türk Hava Yolları A.O.', market:'BIST', price:313.00, currency:'TRY' },
+  { symbol:'TURSG.IS', name:'Türkiye Sigorta A.Ş.', market:'BIST', price:16.66, currency:'TRY' },
+  { symbol:'GARAN.IS', name:'Garanti BBVA', market:'BIST', price:125.50, currency:'TRY' },
+  { symbol:'ASELS.IS', name:'Aselsan Elektronik', market:'BIST', price:382.50, currency:'TRY' },
+  { symbol:'TUPRS.IS', name:'Tüpraş', market:'BIST', price:306.50, currency:'TRY' },
+  { symbol:'EREGL.IS', name:'Ereğli Demir Çelik', market:'BIST', price:48.20, currency:'TRY' },
+  { symbol:'KCHOL.IS', name:'Koç Holding', market:'BIST', price:210.40, currency:'TRY' },
+  { symbol:'SASA.IS', name:'SASA Polyester', market:'BIST', price:38.90, currency:'TRY' },
+  { symbol:'AAPL', name:'Apple Inc.', market:'NASDAQ', price:321.66, currency:'USD' },
+  { symbol:'MSFT', name:'Microsoft Corp.', market:'NASDAQ', price:381.58, currency:'USD' },
+  { symbol:'NVDA', name:'NVIDIA Corp.', market:'NASDAQ', price:208.76, currency:'USD' },
   { symbol:'TSLA', name:'Tesla Inc.', market:'NASDAQ', price:318.60, currency:'USD' },
+  { symbol:'AMZN', name:'Amazon.com Inc.', market:'NASDAQ', price:182.50, currency:'USD' },
+  { symbol:'AMD', name:'Advanced Micro Devices', market:'NASDAQ', price:154.20, currency:'USD' },
+  { symbol:'PLTR', name:'Palantir Technologies', market:'NYSE', price:28.40, currency:'USD' },
 ];
 
-const MOCK_PORTFOLIO = {
-  cashTry: 48250.75,
-  // Aggregate P/L across timeframes for the interactive top badge
-  dailyPnl: 4250.00, dailyPnlPct: 1.9,
-  weeklyPnl: 12100.00, weeklyPnlPct: 5.7,
-  allTimePnl: 48320.00, allTimePnlPct: 27.4,
-  holdings: [
-    { symbol:'THYAO.IS', name:'Türk Hava Yolları', qty:120, avgCost:288.10, price:312.50, dailyPct:1.8, weeklyPct:4.2, currency:'TRY' },
-    { symbol:'GARAN.IS', name:'Garanti BBVA', qty:80, avgCost:124.50, price:118.30, dailyPct:-0.9, weeklyPct:-2.1, currency:'TRY' },
-    { symbol:'AAPL', name:'Apple Inc.', qty:15, avgCost:198.20, price:231.40, dailyPct:0.6, weeklyPct:3.4, currency:'USD' },
-    { symbol:'ASELS.IS', name:'Aselsan', qty:200, avgCost:74.90, price:71.85, dailyPct:-0.4, weeklyPct:1.1, currency:'TRY' },
-    { symbol:'NVDA', name:'NVIDIA Corp.', qty:10, avgCost:140.30, price:172.15, dailyPct:2.1, weeklyPct:6.8, currency:'USD' },
-  ]
-};
-
-const MOCK_NEWS = [
-  { title:'TCMB faiz kararında beklenti sınırlı indirim yönünde', sentiment:'bullish', source:'Reuters', time:'2sa',
-    summary:'Merkez Bankası\'nın bir sonraki toplantısında politika faizinde ölçülü bir indirime gidebileceği yönündeki beklentiler güçlendi. Piyasa katılımcıları, enflasyondaki yavaşlama sinyallerinin bu adımı destekleyebileceğini değerlendiriyor.',
-    aiAnalysis:'Sınırlı bir indirim senaryosu BIST bankacılık ve mevduat ağırlıklı fonlar için ölçülü pozitif, tahvil getirilerinde ise sınırlı bir gerileme yaratabilir. Portföyünüzdeki BIST ağırlıklı pozisyonlar bu haberden hafif olumlu etkilenebilir.' },
-  { title:'ABD enflasyon verisi beklentinin üzerinde geldi', sentiment:'bearish', source:'Bloomberg', time:'4sa',
-    summary:'ABD\'de açıklanan tüketici fiyat endeksi verisi piyasa beklentisinin üzerinde gerçekleşti. Veri sonrası Fed\'in faiz indirim takviminin gecikebileceği yönünde yorumlar arttı.',
-    aiAnalysis:'Yüksek enflasyon verisi, kısa vadede ABD hisselerinde oynaklığı artırabilir ve teknoloji ağırlıklı pozisyonlarda baskı yaratabilir. USD/TRY üzerindeki güçlenme eğilimi ABD hisselerinizin TL bazlı değerini kısmen destekleyebilir.' },
-  { title:'Teknoloji hisselerinde kurumsal alım ilgisi sürüyor', sentiment:'bullish', source:'CNBC-e', time:'6sa',
-    summary:'Büyük yapay zeka ve yarı iletken şirketlerine yönelik kurumsal talep sürüyor. Analistler, çip talebindeki büyümenin önümüzdeki çeyreklerde de devam edebileceğini belirtiyor.',
-    aiAnalysis:'Kurumsal ilginin sürmesi, portföyünüzdeki AI ve yarı iletken temalı pozisyonlar için destekleyici bir sinyal. Ancak değerleme çarpanlarındaki gerilme riski izlenmeye devam etmeli.' },
-  { title:'Enerji fiyatlarındaki oynaklık marj baskısı yaratabilir', sentiment:'bearish', source:'Anadolu Ajansı', time:'9sa',
-    summary:'Küresel enerji fiyatlarındaki dalgalanma, enerji yoğun sektörlerde üretim maliyetleri üzerinde baskı oluşturabilir. Uzmanlar, kısa vadede marj daralmasına dikkat çekiyor.',
-    aiAnalysis:'Enerji maliyetlerindeki artış, sanayi ve ulaştırma sektöründeki pozisyonlarınızın kâr marjlarını sıkıştırabilir. Enerji fiyatlarını yakından takip etmenizi öneririz.' },
-];
-
-/* ===================================================================
-   STATE
-=================================================================== */
 let state = {
   theme: localStorage.getItem('mh_theme') || 'light',
-  selected: MOCK_UNIVERSE[0],
+  selected: MOCK_UNIVERSE[3],
   chart: null,
   walletMode: 'deposit',
   usdTry: USD_TRY_FALLBACK,
-  pnlView: 0,             // 0 = daily, 1 = weekly, 2 = all-time
-  rowMetric: {},           // symbol -> 0..3 cycle index for portfolio row badge
-  period: '1mo',
+  pnlView: 0,
+  rowMetric: {},
+  period: '1d',
   portfolioCache: null,
   newsCache: [],
+  favorites: new Set(),
+  favOnly: false,
+  transactions: [],
+  lastAiResult: null,
+  lastAiScenario: '',
+  tradeMode: 'qty'
 };
 
 /* ===================================================================
-   GENERIC API HELPER (gerçek backend -> fallback mock)
+   GENERIC API HELPER
 =================================================================== */
 async function apiCall(baseUrl, path, options = {}, fallback = null) {
   try {
@@ -383,26 +586,99 @@ async function apiCall(baseUrl, path, options = {}, fallback = null) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
   } catch (err) {
-    console.warn('[MacroHedge] API erişilemedi, fallback veri kullanılıyor:', baseUrl + path, err.message);
     return fallback;
   }
 }
 
 /* ===================================================================
-   INIT
+   KULLANICI VE PORTFÖY YÖNETİMİ
 =================================================================== */
+function getUserState() {
+  const saved = localStorage.getItem('mh_user');
+  if (saved) return JSON.parse(saved);
+  return { name: 'Berat Ergin', email: 'berat.ergin@macrohedge.com', initials: 'BE', loggedIn: true };
+}
+
+function saveUserState(user) {
+  localStorage.setItem('mh_user', JSON.stringify(user));
+  renderHeaderUser();
+}
+
+function renderHeaderUser() {
+  const user = getUserState();
+  const avatarBtn = document.getElementById('profileAvatarBtn');
+  const loginBtn = document.getElementById('navLoginBtn');
+  const profileName = document.querySelector('#profileMenu p.font-semibold');
+  const profileEmail = document.querySelector('#profileMenu p.font-num');
+
+  if (user && user.loggedIn) {
+    if (avatarBtn) { avatarBtn.innerText = user.initials || 'BE'; avatarBtn.classList.remove('hidden'); }
+    if (loginBtn) loginBtn.classList.add('hidden');
+    if (profileName) profileName.innerText = user.name;
+    if (profileEmail) profileEmail.innerText = user.email;
+  } else {
+    if (avatarBtn) avatarBtn.classList.add('hidden');
+    if (loginBtn) loginBtn.classList.remove('hidden');
+  }
+}
+
+function getUserPortfolio() {
+  const user = getUserState();
+  const storageKey = `mh_portfolio_${user.email || 'default'}`;
+  const saved = localStorage.getItem(storageKey);
+  
+  if (saved) {
+    return JSON.parse(saved);
+  } else {
+    const initial = {
+      cashTry: 100000.00,
+      dailyPnl: 0, dailyPnlPct: 0,
+      weeklyPnl: 0, weeklyPnlPct: 0,
+      allTimePnl: 0, allTimePnlPct: 0,
+      holdings: []
+    };
+    localStorage.setItem(storageKey, JSON.stringify(initial));
+    return initial;
+  }
+}
+
+function saveUserPortfolio(portfolio) {
+  const user = getUserState();
+  const storageKey = `mh_portfolio_${user.email || 'default'}`;
+  localStorage.setItem(storageKey, JSON.stringify(portfolio));
+}
+
+/* ===================================================================
+   MASTER REFRESH LOOP
+=================================================================== */
+async function refreshAllMarketData() {
+  await Promise.all(MOCK_UNIVERSE.map(async (stock) => {
+    const liveRes = await apiCall(SPRING_API, `/market/stock/${encodeURIComponent(stock.symbol)}`, {}, null);
+    if (liveRes && liveRes.price) {
+      stock.price = Number(liveRes.price);
+      if (liveRes.currency) stock.currency = liveRes.currency;
+    }
+  }));
+
+  refreshWatchlistView();
+  await loadPortfolio();
+  await loadNews();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   applyTheme();
+  renderHeaderUser();
   updateFxWarningText();
-  renderWatchlist(MOCK_UNIVERSE);
-  await loadPortfolio();
-  await selectStock(MOCK_UNIVERSE[0]);
-  await loadNews();
+  
+  await refreshAllMarketData();
+  await selectStock(state.selected || MOCK_UNIVERSE[3]);
+
+  setInterval(async () => { await refreshAllMarketData(); }, 30000);
   lucide.createIcons();
 });
 
 /* ===================================================================
-   THEME
+   HELPERS & FORMATTING
 =================================================================== */
 function toggleTheme() {
   state.theme = state.theme === 'light' ? 'dark' : 'light';
@@ -412,59 +688,41 @@ function toggleTheme() {
 function applyTheme() {
   document.documentElement.classList.toggle('dark', state.theme === 'dark');
   const label = document.getElementById('themeToggleLabel');
-  label.innerText = state.theme === 'dark' ? '☀️ Gündüz' : '🌙 Gece';
+  if (label) label.innerText = state.theme === 'dark' ? '☀️ Gündüz' : '🌙 Gece';
   lucide.createIcons();
 }
 
-/* ===================================================================
-   FORMAT HELPERS
-=================================================================== */
 const fmtTry = n => '₺' + Number(n).toLocaleString('tr-TR', { minimumFractionDigits:2, maximumFractionDigits:2 });
 const fmtUsd = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
 const fmtPct = n => (n >= 0 ? '+' : '') + Number(n).toFixed(2) + '%';
 const fmtPctComma = n => (n >= 0 ? '+' : '') + Number(n).toFixed(1).replace('.', ',') + '%';
-
-function pctBadge(value) {
-  const positive = value >= 0;
-  const cls = positive
-    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
-    : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400';
-  return `<span class="badge ${cls}">${fmtPct(value)}</span>`;
-}
+const fmtByCurrency = (n, currency) => currency === 'USD' ? fmtUsd(n) : fmtTry(n);
 
 function updateFxWarningText() {
   const rate = Number(state.usdTry).toLocaleString('tr-TR', { minimumFractionDigits:2, maximumFractionDigits:2 });
-  document.getElementById('usWarningText').innerText =
-    `⚡ ABD Hissesi alımında TL bakiyeniz anlık kurdan ($1 = ₺${rate}) otomatik USD'ye dönüştürülür.`;
+  const warnEl = document.getElementById('usWarningText');
+  if (warnEl) warnEl.innerText = `⚡ ABD Hissesi alımında TL bakiyeniz anlık kurdan ($1 = ₺${rate}) otomatik USD'ye dönüştürülür.`;
 }
 
-/* ===================================================================
-   TOP INTERACTIVE TOTAL P/L TOGGLE
-=================================================================== */
-function cyclePnlView() {
-  state.pnlView = (state.pnlView + 1) % 3;
-  renderTopPnl();
-}
+function cyclePnlView() { state.pnlView = (state.pnlView + 1) % 3; renderTopPnl(); }
 function renderTopPnl() {
-  const p = state.portfolioCache || MOCK_PORTFOLIO;
+  const p = state.portfolioCache || getUserPortfolio();
   const views = [
-    { amount: p.dailyPnl, pct: p.dailyPnlPct, label: 'Bugün' },
-    { amount: p.weeklyPnl, pct: p.weeklyPnlPct, label: 'Bu Hafta' },
-    { amount: p.allTimePnl, pct: p.allTimePnlPct, label: 'Toplam' },
+    { amount: p.dailyPnl || 0, pct: p.dailyPnlPct || 0, label: 'Bugün' },
+    { amount: p.weeklyPnl || 0, pct: p.weeklyPnlPct || 0, label: 'Bu Hafta' },
+    { amount: p.allTimePnl || 0, pct: p.allTimePnlPct || 0, label: 'Toplam' },
   ];
   const v = views[state.pnlView];
   const positive = v.amount >= 0;
   const badge = document.getElementById('navPnlBadge');
-  badge.innerText = `${positive ? '+' : ''}${fmtTry(v.amount)} (${fmtPctComma(v.pct)})`;
-  badge.className = 'badge ' + (positive
-    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
-    : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400');
-  document.getElementById('navPnlLabel').innerText = v.label;
+  if (badge) {
+    badge.innerText = `${positive ? '+' : ''}${fmtTry(v.amount)} (${fmtPctComma(v.pct)})`;
+    badge.className = 'badge ' + (positive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10' : 'bg-red-50 text-red-500 dark:bg-red-500/10');
+  }
+  const labelEl = document.getElementById('navPnlLabel');
+  if (labelEl) labelEl.innerText = v.label;
 }
 
-/* ===================================================================
-   AVATAR HELPERS
-=================================================================== */
 const AVATAR_PALETTE = ['#4338ca', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#ef4444', '#14b8a6'];
 function avatarColorFor(symbol) {
   let hash = 0;
@@ -480,44 +738,114 @@ function avatarHtml(symbol) {
 }
 
 /* ===================================================================
-   WATCHLIST + SEARCH
+   KESİNTİSİZ TÜM BORSA ARAMA MOTORU (BIST & KÜRESEL)
 =================================================================== */
 function renderWatchlist(list) {
   const el = document.getElementById('watchlist');
-  document.getElementById('watchlistCount').innerText = list.length + ' sembol';
+  const countEl = document.getElementById('watchlistCount');
+  if (countEl) countEl.innerText = list.length + ' sembol';
+  if (!el) return;
   if (!list.length) {
     el.innerHTML = `<p class="text-xs text-slate-400 py-6 text-center">Sonuç bulunamadı.</p>`;
     return;
   }
   el.innerHTML = list.map(s => `
-    <button onclick='selectStockBySymbol("${s.symbol}")' class="stock-row w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition text-left ${state.selected?.symbol === s.symbol ? 'active' : ''}">
-      <div class="flex items-center gap-2.5 min-w-0">
-        ${avatarHtml(s.symbol)}
-        <div class="min-w-0">
-          <p class="text-sm font-semibold truncate">${s.symbol}</p>
-          <p class="text-[11px] text-slate-400 truncate">${s.name}</p>
+    <div class="stock-row w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition text-left ${state.selected?.symbol === s.symbol ? 'active' : ''}">
+      <button onclick='toggleFavorite("${s.symbol}", event)' class="fav-star shrink-0 mr-1 ${state.favorites.has(s.symbol) ? 'active' : ''}">⭐</button>
+      <button onclick='selectStockBySymbol("${s.symbol}")' class="flex items-center justify-between flex-1 min-w-0 text-left">
+        <div class="flex items-center gap-2.5 min-w-0">
+          ${avatarHtml(s.symbol)}
+          <div class="min-w-0">
+            <p class="text-sm font-semibold truncate">${s.symbol}</p>
+            <p class="text-[11px] text-slate-400 truncate">${s.name}</p>
+          </div>
         </div>
-      </div>
-      <div class="text-right shrink-0 ml-2">
-        <p class="font-num text-xs font-semibold">${s.currency === 'USD' ? fmtUsd(s.price) : fmtTry(s.price)}</p>
-        <p class="text-[10px] text-slate-400 font-num">${s.market}</p>
-      </div>
-    </button>
+        <div class="text-right shrink-0 ml-2">
+          <p class="font-num text-xs font-semibold">${s.currency === 'USD' ? fmtUsd(s.price) : fmtTry(s.price)}</p>
+          <p class="text-[10px] text-slate-400 font-num">${s.market}</p>
+        </div>
+      </button>
+    </div>
   `).join('');
+}
+
+function applyFavFilter(list) { return state.favOnly ? list.filter(s => state.favorites.has(s.symbol)) : list; }
+
+function refreshWatchlistView() {
+  const searchEl = document.getElementById('searchInput');
+  const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
+  const base = q ? MOCK_UNIVERSE.filter(s => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)) : MOCK_UNIVERSE;
+  renderWatchlist(applyFavFilter(base));
+}
+
+function toggleFavorite(symbol, event) {
+  event.stopPropagation();
+  if (state.favorites.has(symbol)) state.favorites.delete(symbol);
+  else state.favorites.add(symbol);
+  refreshWatchlistView();
+}
+
+function toggleFavFilter() {
+  state.favOnly = !state.favOnly;
+  const btn = document.getElementById('favFilterBtn');
+  if (btn) btn.className = 'text-[10px] font-semibold px-2 py-1 rounded-lg border transition ' + (state.favOnly ? 'bg-amber-50 border-amber-300 text-amber-600' : 'border-slate-200 text-slate-400');
+  refreshWatchlistView();
 }
 
 let searchDebounce;
 function handleSearch(query) {
   clearTimeout(searchDebounce);
   searchDebounce = setTimeout(async () => {
-    if (!query.trim()) { renderWatchlist(MOCK_UNIVERSE); return; }
-    const localMatches = MOCK_UNIVERSE.filter(s =>
-      s.symbol.toLowerCase().includes(query.toLowerCase()) ||
-      s.name.toLowerCase().includes(query.toLowerCase())
+    const rawQ = query.trim();
+    if (!rawQ) { 
+      refreshWatchlistView(); 
+      return; 
+    }
+
+    const q = rawQ.toLowerCase();
+    const upperQ = rawQ.toUpperCase();
+
+    // 1. Yerel listede filtrele
+    let localMatches = MOCK_UNIVERSE.filter(s => 
+      s.symbol.toLowerCase().includes(q) || 
+      s.name.toLowerCase().includes(q)
     );
-    const remote = await apiCall(SPRING_API, `/stocks/search?q=${encodeURIComponent(query)}`, {}, null);
-    renderWatchlist(remote && remote.length ? remote : localMatches);
-  }, 250);
+
+    // 2. Doğrudan veya Canlı Borsa Aramasını Tetikle
+    let remoteMatches = [];
+    try {
+      const res = await fetch(`${FASTAPI_API}/market/search?q=${encodeURIComponent(rawQ)}`);
+      if (res.ok) remoteMatches = await res.json();
+    } catch(e) {}
+
+    // 3. Arama servisi boşsa veya direkt sembol yazıldıysa canlı fiyat servisini dene (Örn: SPC, SASA.IS, PLTR)
+    if ((!remoteMatches || remoteMatches.length === 0) && rawQ.length >= 2) {
+      const testSymbol = upperQ.endsWith('.IS') || !upperQ.includes('.') ? upperQ : upperQ;
+      const liveRes = await apiCall(SPRING_API, `/market/stock/${encodeURIComponent(testSymbol)}`, {}, null) ||
+                      await apiCall(FASTAPI_API, `/market/stock/${encodeURIComponent(testSymbol)}`, {}, null);
+      
+      if (liveRes && liveRes.price && liveRes.price > 0) {
+        remoteMatches = [{
+          symbol: testSymbol,
+          name: testSymbol.endsWith('.IS') ? `${testSymbol.replace('.IS','')} A.Ş.` : `${testSymbol} Corp.`,
+          market: testSymbol.endsWith('.IS') ? 'BIST' : 'US MARKET',
+          price: Number(liveRes.price),
+          currency: liveRes.currency || (testSymbol.endsWith('.IS') ? 'TRY' : 'USD')
+        }];
+      }
+    }
+
+    if (remoteMatches && remoteMatches.length > 0) {
+      remoteMatches.forEach(stock => {
+        if (!MOCK_UNIVERSE.some(u => u.symbol === stock.symbol)) {
+          MOCK_UNIVERSE.unshift(stock);
+        }
+      });
+      renderWatchlist(applyFavFilter(remoteMatches));
+    } else {
+      renderWatchlist(applyFavFilter(localMatches));
+    }
+  }, 300);
 }
 
 function selectStockBySymbol(symbol) {
@@ -526,74 +854,66 @@ function selectStockBySymbol(symbol) {
 }
 
 /* ===================================================================
-   STOCK DETAIL + CHART
+   GRAFİK VE SEÇİLİ HİSSE
 =================================================================== */
+const PERIOD_LABELS = { '1d': 'Son 1 günlük (saatlik)', '5d': 'Son 5 günlük', '1mo': 'Son 1 aylık', '1y': 'Son 1 yıllık' };
+
 async function selectStock(stock) {
   state.selected = stock;
+
+  const liveRes = await apiCall(SPRING_API, `/market/stock/${encodeURIComponent(stock.symbol)}`, {}, null);
+  if (liveRes && liveRes.price) {
+    stock.price = Number(liveRes.price);
+    if (liveRes.currency) stock.currency = liveRes.currency;
+  }
+
   document.getElementById('selSymbol').innerText = stock.symbol;
   document.getElementById('selName').innerText = stock.name;
   document.getElementById('selMarket').innerText = stock.market;
   document.getElementById('selPrice').innerText = stock.currency === 'USD' ? fmtUsd(stock.price) : fmtTry(stock.price);
-  document.getElementById('tradePrice').value = stock.price.toFixed(2);
+  
+  const tradePriceEl = document.getElementById('tradePrice');
+  if (tradePriceEl) tradePriceEl.value = Number(stock.price).toFixed(2);
 
-  const dailyPct = (Math.random() * 4 - 1.5);
-  const changeEl = document.getElementById('selChange');
-  changeEl.innerText = fmtPct(dailyPct);
-  changeEl.className = 'font-num text-sm font-semibold ' + (dailyPct >= 0 ? 'text-profit' : 'text-loss');
-
-  document.getElementById('usWarning').classList.toggle('flex', stock.currency === 'USD');
-  document.getElementById('usWarning').classList.toggle('hidden', stock.currency !== 'USD');
+  const usWarning = document.getElementById('usWarning');
+  if (usWarning) {
+    usWarning.classList.toggle('flex', stock.currency === 'USD');
+    usWarning.classList.toggle('hidden', stock.currency !== 'USD');
+  }
   if (stock.currency === 'USD') updateFxWarningText();
 
-  const q = document.getElementById('searchInput').value;
-  renderWatchlist(q ? MOCK_UNIVERSE.filter(s => s.symbol.toLowerCase().includes(q.toLowerCase()) || s.name.toLowerCase().includes(q.toLowerCase())) : MOCK_UNIVERSE);
+  refreshWatchlistView();
   updateEstTotal();
-
   await loadChartForPeriod(state.period);
 }
 
-const PERIOD_LABELS = { '1d': 'Son 1 günlük (saatlik)', '5d': 'Son 5 günlük', '1mo': 'Son 1 aylık', '1y': 'Son 1 yıllık' };
-
 async function loadChartForPeriod(period) {
   state.period = period;
-  document.querySelectorAll('.period-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.period === period);
-  });
-  document.getElementById('chartRangeLabel').innerText = (PERIOD_LABELS[period] || 'Seçili aralık') + ' kapanış verisi';
+  document.querySelectorAll('.period-btn').forEach(btn => { btn.classList.toggle('active', btn.dataset.period === period); });
+
+  const rangeLabelEl = document.getElementById('chartRangeLabel');
+  if (rangeLabelEl) rangeLabelEl.innerText = (PERIOD_LABELS[period] || 'Seçili aralık') + ' gerçek kapanış verisi';
 
   const symbol = state.selected.symbol;
-  const history = await apiCall(SPRING_API, `/market/stock/${encodeURIComponent(symbol)}/history?period=${period}`, {}, null);
-  renderChart(history && history.length ? history : generateMockHistory(state.selected.price, period), period);
-}
-
-function generateMockHistory(basePrice, period) {
-  const counts = { '1d': 24, '5d': 20, '1mo': 30, '1y': 12 };
-  const n = counts[period] || 14;
-  const points = [];
-  let price = basePrice * (0.90 + Math.random() * 0.08);
-  const now = new Date();
-
-  for (let i = n - 1; i >= 0; i--) {
-    let label;
-    const d = new Date(now);
-    if (period === '1d') {
-      d.setHours(d.getHours() - i);
-      label = d.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' });
-    } else if (period === '5d') {
-      d.setHours(d.getHours() - i * 6);
-      label = d.toLocaleDateString('tr-TR', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' });
-    } else if (period === '1y') {
-      d.setMonth(d.getMonth() - i);
-      label = d.toLocaleDateString('tr-TR', { month:'short', year:'2-digit' });
-    } else {
-      d.setDate(d.getDate() - i);
-      label = d.toLocaleDateString('tr-TR', { day:'2-digit', month:'short' });
-    }
-    price = price * (1 + (Math.random() * 0.04 - 0.02));
-    points.push({ date: label, close: price });
+  
+  let history = await apiCall(SPRING_API, `/market/stock/${encodeURIComponent(symbol)}/history?period=${period}`, {}, null);
+  if (!history || !history.length) {
+    history = await apiCall(FASTAPI_API, `/market/stock/${encodeURIComponent(symbol)}/history?period=${period}`, {}, []);
   }
-  points[points.length - 1].close = basePrice;
-  return points;
+
+  if (!history || !history.length) return;
+
+  const startPrice = history[0].close;
+  const endPrice = history[history.length - 1].close;
+  const pctChange = startPrice > 0 ? ((endPrice - startPrice) / startPrice) * 100 : 0;
+
+  const changeEl = document.getElementById('selChange');
+  if (changeEl) {
+    changeEl.innerText = fmtPct(pctChange);
+    changeEl.className = 'font-num text-sm font-semibold ' + (pctChange >= 0 ? 'text-profit' : 'text-loss');
+  }
+
+  renderChart(history);
 }
 
 function renderChart(history) {
@@ -617,11 +937,11 @@ function renderChart(history) {
         data,
         borderColor: lineColor,
         backgroundColor: gradient,
-        borderWidth: 2.5,
-        tension: 0.35,
+        borderWidth: 2,
+        tension: 0.02,
         fill: true,
         pointRadius: 0,
-        pointHoverRadius: 5,
+        pointHoverRadius: 6,
         pointHoverBackgroundColor: lineColor,
       }]
     },
@@ -644,31 +964,72 @@ function renderChart(history) {
         }
       },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 10, family:'IBM Plex Mono' }, color: '#94a3b8', maxTicksLimit: 8 } },
+        x: { grid: { display: false }, ticks: { font: { size: 10, family:'IBM Plex Mono' }, color: '#94a3b8', maxTicksLimit: 12 } },
         y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10, family:'IBM Plex Mono' }, color: '#94a3b8' } }
       }
     }
   });
 }
 
+/* ===================================================================
+   TUTAR / ADET MODU HESABI
+=================================================================== */
+function switchTradeMode(mode) {
+  state.tradeMode = mode;
+  const isQty = mode === 'qty';
+  
+  document.getElementById('tradeQtyContainer').classList.toggle('hidden', !isQty);
+  document.getElementById('tradeAmountContainer').classList.toggle('hidden', isQty);
+  
+  document.getElementById('tradeModeQtyBtn').className = isQty 
+    ? 'px-3 py-1 rounded-lg bg-white dark:bg-slate-700 shadow-sm text-ink dark:text-white' 
+    : 'px-3 py-1 rounded-lg text-slate-400';
+    
+  document.getElementById('tradeModeAmtBtn').className = !isQty 
+    ? 'px-3 py-1 rounded-lg bg-white dark:bg-slate-700 shadow-sm text-ink dark:text-white' 
+    : 'px-3 py-1 rounded-lg text-slate-400';
+
+  updateEstTotal();
+}
+
+function updateEstQtyFromAmount() {
+  const totalAmt = Number(document.getElementById('tradeTotalAmount').value) || 0;
+  const unitPrice = Number(document.getElementById('tradePrice').value) || 1;
+  
+  const calcQty = totalAmt / unitPrice;
+  document.getElementById('tradeCalculatedQty').value = calcQty > 0 ? calcQty.toFixed(4) : '0';
+  document.getElementById('tradeQty').value = calcQty > 0 ? calcQty.toFixed(4) : '1';
+  
+  let totalTry = totalAmt;
+  if (state.selected?.currency === 'USD') totalTry = totalAmt * state.usdTry;
+  document.getElementById('estTotal').innerText = fmtTry(totalTry);
+}
+
 function updateEstTotal() {
-  const qty = Number(document.getElementById('tradeQty').value) || 0;
-  const price = Number(document.getElementById('tradePrice').value) || 0;
+  if (state.tradeMode === 'amount') {
+    updateEstQtyFromAmount();
+    return;
+  }
+  const qty = Number(document.getElementById('tradeQty')?.value) || 0;
+  const price = Number(document.getElementById('tradePrice')?.value) || 0;
   let total = qty * price;
   if (state.selected?.currency === 'USD') total = total * state.usdTry;
-  document.getElementById('estTotal').innerText = fmtTry(total);
+  const el = document.getElementById('estTotal');
+  if (el) el.innerText = fmtTry(total);
 }
+
 document.addEventListener('input', (e) => {
   if (e.target.id === 'tradeQty' || e.target.id === 'tradePrice') updateEstTotal();
 });
 
 /* ===================================================================
-   TRADE (BUY / SELL)
+   AL / SAT İŞLEMİ
 =================================================================== */
 async function submitTrade(side) {
   const qty = Number(document.getElementById('tradeQty').value);
   const price = Number(document.getElementById('tradePrice').value);
   const msgEl = document.getElementById('tradeMsg');
+  const stock = state.selected;
 
   if (!qty || qty <= 0 || !price || price <= 0) {
     msgEl.className = 'text-xs mt-2 text-loss';
@@ -677,73 +1038,107 @@ async function submitTrade(side) {
     return;
   }
 
-  const payload = { symbol: state.selected.symbol, quantity: qty, price };
-  const result = await apiCall(SPRING_API, `/trade/${side}`, {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  }, { success: true, mock: true });
+  const userPortfolio = getUserPortfolio();
+  const costInTry = (stock.currency === 'USD') ? (qty * price * state.usdTry) : (qty * price);
 
-  msgEl.className = 'text-xs mt-2 ' + (result?.success !== false ? 'text-profit' : 'text-loss');
-  msgEl.innerText = result?.success !== false
-    ? `${side === 'buy' ? 'Alım' : 'Satım'} emri iletildi: ${qty} adet ${state.selected.symbol} @ ${price}${result.mock ? ' (backend bağlantısı yok, demo modu)' : ''}`
-    : (result?.message || 'İşlem başarısız oldu.');
+  if (side === 'buy') {
+    if (userPortfolio.cashTry < costInTry) {
+      msgEl.className = 'text-xs mt-2 text-loss';
+      msgEl.innerText = `Yetersiz bakiye! Gereken: ${fmtTry(costInTry)}`;
+      msgEl.classList.remove('hidden');
+      return;
+    }
+
+    userPortfolio.cashTry -= costInTry;
+
+    const existing = userPortfolio.holdings.find(h => h.symbol === stock.symbol);
+    if (existing) {
+      const totalQty = existing.qty + qty;
+      existing.avgCost = ((existing.qty * existing.avgCost) + (qty * price)) / totalQty;
+      existing.qty = totalQty;
+      existing.price = price;
+    } else {
+      userPortfolio.holdings.push({
+        symbol: stock.symbol,
+        name: stock.name,
+        qty: qty,
+        avgCost: price,
+        price: price,
+        dailyPct: 0.5,
+        weeklyPct: 1.2,
+        currency: stock.currency
+      });
+    }
+  } else if (side === 'sell') {
+    const existingIndex = userPortfolio.holdings.findIndex(h => h.symbol === stock.symbol);
+    if (existingIndex === -1 || userPortfolio.holdings[existingIndex].qty < qty) {
+      msgEl.className = 'text-xs mt-2 text-loss';
+      msgEl.innerText = `Elinde yeterli ${stock.symbol} adedi yok!`;
+      msgEl.classList.remove('hidden');
+      return;
+    }
+
+    userPortfolio.cashTry += costInTry;
+
+    const existing = userPortfolio.holdings[existingIndex];
+    existing.qty -= qty;
+    if (existing.qty <= 0) {
+      userPortfolio.holdings.splice(existingIndex, 1);
+    }
+  }
+
+  saveUserPortfolio(userPortfolio);
+
+  state.transactions.unshift({
+    type: side === 'buy' ? 'AL' : 'SAT',
+    symbol: stock.symbol,
+    qty, price,
+    currency: stock.currency,
+    date: new Date().toISOString(),
+  });
+
+  const payload = { userId: 1, stockSymbol: stock.symbol, quantity: qty, unitPrice: price };
+  await apiCall(SPRING_API, `/trade/${side}`, { method: 'POST', body: JSON.stringify(payload) }, { success: true });
+
+  msgEl.className = 'text-xs mt-2 text-profit';
+  msgEl.innerText = `${side === 'buy' ? 'Alım' : 'Satım'} işlemi başarıyla gerçekleşti! (${qty.toFixed(2)} adet ${stock.symbol} @ ${price})`;
   msgEl.classList.remove('hidden');
 
   await loadPortfolio();
 }
 
 /* ===================================================================
-   WALLET MODAL
+   CÜZDAN VE PORTFÖY YÖNETİMİ
 =================================================================== */
 function openWalletModal(mode) {
   state.walletMode = mode;
   document.getElementById('walletModalTitle').innerText = mode === 'deposit' ? 'TL Yatır' : 'TL Çek';
   document.getElementById('walletConfirmBtn').innerText = mode === 'deposit' ? 'Yatırımı Onayla' : 'Çekimi Onayla';
-  document.getElementById('walletConfirmBtn').className = 'mt-4 w-full text-white font-semibold text-sm py-2.5 rounded-xl transition ' +
-    (mode === 'deposit' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600');
+  document.getElementById('walletConfirmBtn').className = 'mt-4 w-full text-white font-semibold text-sm py-2.5 rounded-xl transition ' + (mode === 'deposit' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600');
   document.getElementById('walletAmount').value = '';
   document.getElementById('walletMsg').classList.add('hidden');
   document.getElementById('walletModal').classList.remove('hidden');
 }
-function closeWalletModal() {
-  document.getElementById('walletModal').classList.add('hidden');
-}
-function quickAmount(v) {
-  document.getElementById('walletAmount').value = v;
-}
+function closeWalletModal() { document.getElementById('walletModal').classList.add('hidden'); }
+function quickAmount(v) { document.getElementById('walletAmount').value = v; }
+
 async function confirmWalletAction() {
   const amount = Number(document.getElementById('walletAmount').value);
-  const msgEl = document.getElementById('walletMsg');
-  if (!amount || amount <= 0) {
-    msgEl.className = 'text-xs mt-2 text-loss';
-    msgEl.innerText = 'Lütfen geçerli bir tutar girin.';
-    msgEl.classList.remove('hidden');
-    return;
-  }
-  const path = state.walletMode === 'deposit' ? '/wallet/deposit' : '/wallet/withdraw';
-  const result = await apiCall(SPRING_API, path, {
-    method: 'POST',
-    body: JSON.stringify({ amount })
-  }, { success: true, mock: true });
+  if (!amount || amount <= 0) return;
 
-  if (result?.success !== false) {
-    if (state.walletMode === 'deposit') MOCK_PORTFOLIO.cashTry += amount;
-    else MOCK_PORTFOLIO.cashTry = Math.max(0, MOCK_PORTFOLIO.cashTry - amount);
-    await loadPortfolio();
-    closeWalletModal();
+  const userPortfolio = getUserPortfolio();
+  if (state.walletMode === 'deposit') {
+    userPortfolio.cashTry += amount;
   } else {
-    msgEl.className = 'text-xs mt-2 text-loss';
-    msgEl.innerText = result?.message || 'İşlem gerçekleştirilemedi.';
-    msgEl.classList.remove('hidden');
+    userPortfolio.cashTry = Math.max(0, userPortfolio.cashTry - amount);
   }
+  saveUserPortfolio(userPortfolio);
+  await loadPortfolio();
+  closeWalletModal();
 }
 
-/* ===================================================================
-   PORTFOLIO (grouped BIST / Amerikan, avatars, interactive metric badge)
-=================================================================== */
 async function loadPortfolio() {
-  const remote = await apiCall(SPRING_API, '/portfolio', {}, null);
-  const portfolio = remote || MOCK_PORTFOLIO;
+  const portfolio = getUserPortfolio();
 
   let totalTry = portfolio.cashTry;
   const rows = portfolio.holdings.map(h => {
@@ -753,8 +1148,8 @@ async function loadPortfolio() {
     const costTry = h.currency === 'USD' ? h.avgCost * state.usdTry : h.avgCost;
     const pnlTry = (priceTry - costTry) * h.qty;
     const pnlPct = costTry > 0 ? ((priceTry - costTry) / costTry) * 100 : 0;
-    const dailyPnlTry = marketValue * (h.dailyPct / 100);
-    const weeklyPnlTry = marketValue * (h.weeklyPct / 100);
+    const dailyPnlTry = marketValue * ((h.dailyPct || 0.5) / 100);
+    const weeklyPnlTry = marketValue * ((h.weeklyPct || 1.2) / 100);
     return { ...h, marketValue, pnlTry, pnlPct, dailyPnlTry, weeklyPnlTry };
   });
 
@@ -782,28 +1177,24 @@ function rowMetricBadge(h) {
   const idx = state.rowMetric[h.symbol] || 0;
   let inner, colorClass;
   if (idx === 0) {
-    inner = `${h.dailyPnlTry >= 0 ? '+' : ''}${fmtTry(h.dailyPnlTry)} (${fmtPct(h.dailyPct)})`;
-    colorClass = h.dailyPnlTry >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400';
+    inner = `${h.dailyPnlTry >= 0 ? '+' : ''}${fmtTry(h.dailyPnlTry)} (${fmtPct(h.dailyPct || 0.5)})`;
+    colorClass = h.dailyPnlTry >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500';
   } else if (idx === 1) {
-    inner = `${h.weeklyPnlTry >= 0 ? '+' : ''}${fmtTry(h.weeklyPnlTry)} (${fmtPct(h.weeklyPct)})`;
-    colorClass = h.weeklyPnlTry >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400';
+    inner = `${h.weeklyPnlTry >= 0 ? '+' : ''}${fmtTry(h.weeklyPnlTry)} (${fmtPct(h.weeklyPct || 1.2)})`;
+    colorClass = h.weeklyPnlTry >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500';
   } else if (idx === 2) {
     inner = fmtTry(h.marketValue);
-    colorClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+    colorClass = 'bg-slate-100 text-slate-600';
   } else {
-    inner = h.qty + ' adet';
-    colorClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+    inner = h.qty.toFixed(2) + ' adet';
+    colorClass = 'bg-slate-100 text-slate-600';
   }
-  return `
-    <button onclick='cycleRowMetric("${h.symbol}", event)' class="badge badge-click ${colorClass} inline-flex flex-col items-end leading-tight py-1.5">
-      <span class="text-[9px] font-medium opacity-70 normal-case tracking-normal">${ROW_METRIC_LABELS[idx]}</span>
-      <span>${inner}</span>
-    </button>`;
+  return `<button onclick='cycleRowMetric("${h.symbol}", event)' class="badge badge-click ${colorClass} inline-flex flex-col items-end leading-tight py-1.5"><span class="text-[9px] font-medium opacity-70 normal-case">${ROW_METRIC_LABELS[idx]}</span><span>${inner}</span></button>`;
 }
 
 function renderPortfolioRow(h) {
   return `
-    <div class="grid grid-cols-[1fr_110px_110px_150px] items-center gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition" onclick='selectStockBySymbol("${h.symbol}")'>
+    <div class="grid grid-cols-[1fr_110px_110px_150px] items-center gap-3 px-5 py-3 hover:bg-slate-50 cursor-pointer transition" onclick='selectStockBySymbol("${h.symbol}")'>
       <div class="flex items-center gap-2.5 min-w-0">
         ${avatarHtml(h.symbol)}
         <div class="min-w-0">
@@ -811,7 +1202,7 @@ function renderPortfolioRow(h) {
           <p class="text-[11px] text-slate-400 truncate">${h.name}</p>
         </div>
       </div>
-      <p class="text-right font-num text-sm text-slate-500 dark:text-slate-400">${h.currency === 'USD' ? fmtUsd(h.avgCost) : fmtTry(h.avgCost)}</p>
+      <p class="text-right font-num text-sm text-slate-500">${h.currency === 'USD' ? fmtUsd(h.avgCost) : fmtTry(h.avgCost)}</p>
       <p class="text-right font-num text-sm font-semibold">${h.currency === 'USD' ? fmtUsd(h.price) : fmtTry(h.price)}</p>
       <div class="text-right">${rowMetricBadge(h)}</div>
     </div>`;
@@ -821,8 +1212,9 @@ function renderPortfolioGroups() {
   const el = document.getElementById('portfolioGroups');
   const rows = state.portfolioCache?.holdings || [];
 
+  if (!el) return;
   if (!rows.length) {
-    el.innerHTML = `<p class="text-center text-sm text-slate-400 py-10">Portföyünüzde henüz pozisyon yok.</p>`;
+    el.innerHTML = `<p class="text-center text-sm text-slate-400 py-10">Bu hesapta henüz pozisyon yok. Arama çubuğundan hisse seçip Alım yapabilirsiniz.</p>`;
     return;
   }
 
@@ -840,30 +1232,17 @@ function renderPortfolioGroups() {
     </div>`;
 
   let html = columnHeader;
-
   if (bist.length) {
-    html += `
-      <div class="group-header flex items-center justify-between px-5 py-2.5 border-b border-slate-100 dark:border-slate-800">
-        <span class="text-xs font-bold">🇹🇷 BIST Hisseleri</span>
-        <span class="font-num text-xs font-semibold text-slate-500 dark:text-slate-400">${fmtTry(bistTotal)}</span>
-      </div>
-      <div class="divide-y divide-slate-100 dark:divide-slate-800">${bist.map(renderPortfolioRow).join('')}</div>`;
+    html += `<div class="group-header flex items-center justify-between px-5 py-2.5 border-b border-slate-100"><span class="text-xs font-bold">🇹🇷 BIST Hisseleri</span><span class="font-num text-xs font-semibold">${fmtTry(bistTotal)}</span></div><div class="divide-y divide-slate-100">${bist.map(renderPortfolioRow).join('')}</div>`;
   }
-
   if (us.length) {
-    html += `
-      <div class="group-header flex items-center justify-between px-5 py-2.5 border-b border-t border-slate-100 dark:border-slate-800">
-        <span class="text-xs font-bold">🇺🇸 Amerikan Hisseleri</span>
-        <span class="font-num text-xs font-semibold text-slate-500 dark:text-slate-400">${fmtTry(usTotal)}</span>
-      </div>
-      <div class="divide-y divide-slate-100 dark:divide-slate-800">${us.map(renderPortfolioRow).join('')}</div>`;
+    html += `<div class="group-header flex items-center justify-between px-5 py-2.5 border-b border-t border-slate-100"><span class="text-xs font-bold">🇺🇸 Amerikan Hisseleri</span><span class="font-num text-xs font-semibold">${fmtTry(usTotal)}</span></div><div class="divide-y divide-slate-100">${us.map(renderPortfolioRow).join('')}</div>`;
   }
-
   el.innerHTML = html;
 }
 
 /* ===================================================================
-   AI MACRO ENGINE
+   YAPAY ZEKA
 =================================================================== */
 async function requestAiRecommendation() {
   const scenario = document.getElementById('aiScenario').value.trim();
@@ -879,24 +1258,18 @@ async function requestAiRecommendation() {
   btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Analiz ediliyor...`;
   lucide.createIcons();
 
-  const fallback = {
-    riskScore: 62,
-    summary: 'Girilen senaryoya göre orta-yüksek risk iştahı ile teknoloji ve değerli maden ağırlıklı bir portföy dengesi öneriliyor.',
-    allocations: [
-      { symbol: 'NVDA', name: 'NVIDIA Corp.', weight: 32, reason: 'AI çip talebindeki büyüme senaryosuyla uyumlu, yüksek beta.' },
-      { symbol: 'ALTIN', name: 'Altın / Değerli Metal', weight: 24, reason: 'Faiz indirimi senaryosunda güvenli liman talebi artabilir.' },
-      { symbol: 'TUPRS.IS', name: 'Tüpraş', weight: 14, reason: 'Enerji fiyatlarındaki oynaklığa karşı BIST tarafında dengeleyici.' },
-      { symbol: 'NAKİT', name: 'Nakit / Sabit Getiri', weight: 30, reason: 'Senaryo belirsizliğine karşı likidite tamponu.' },
-    ],
-    mock: true,
-  };
-
   const result = await apiCall(SPRING_API, '/ai/macro-recommendation', {
     method: 'POST',
-    body: JSON.stringify({ scenario })
-  }, fallback);
+    body: JSON.stringify({ scenario_description: scenario })
+  }, null) || await apiCall(FASTAPI_API, '/ai/macro-recommendation', {
+    method: 'POST',
+    body: JSON.stringify({ scenario_description: scenario })
+  }, null);
 
-  renderAiResult(result);
+  state.lastAiResult = result;
+  state.lastAiScenario = scenario;
+
+  if (result) renderAiResult(result);
 
   btn.disabled = false;
   btn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i> AI Öngörü Oluştur`;
@@ -907,86 +1280,351 @@ function renderAiResult(result) {
   const el = document.getElementById('aiResult');
   el.classList.remove('hidden');
 
-  const riskColor = result.riskScore >= 70 ? '#ef4444' : result.riskScore >= 40 ? '#f59e0b' : '#10b981';
-  const allocColors = ['#4338ca', '#10b981', '#f59e0b', '#0ea5e9', '#ec4899', '#8b5cf6'];
-  const allocations = result.allocations || result.sectors || [];
+  const rawRisk = result.risk_score_out_of_10 ?? 6;
+  const riskScore = rawRisk <= 10 ? rawRisk * 10 : rawRisk;
+  const summary = result.executive_summary || 'Analiz tamamlandı.';
+  const horizon = result.recommended_horizon || '12 Ay';
+  const expectedReturn = result.expected_return_pct || '%20 - %30';
+
+  let allocations = [];
+  if (result.portfolio_allocation_percent && typeof result.portfolio_allocation_percent === 'object') {
+    allocations = Object.entries(result.portfolio_allocation_percent).map(([key, val]) => ({ name: key, weight: val }));
+  }
+
+  const riskColor = riskScore >= 70 ? '#ef4444' : riskScore >= 40 ? '#f59e0b' : '#10b981';
+  const allocColors = ['#4338ca', '#10b981', '#f59e0b', '#0ea5e9', '#ec4899'];
 
   el.innerHTML = `
-    <div class="rounded-xl border border-slate-100 dark:border-slate-800 p-3 bg-slate-50 dark:bg-slate-800/50">
-      <div class="flex items-center justify-between mb-1.5">
-        <span class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Risk Skoru</span>
-        <span class="font-num text-sm font-bold" style="color:${riskColor}">${result.riskScore}/100</span>
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <div class="rounded-xl border border-slate-100 dark:border-slate-800 p-2.5 bg-slate-50 dark:bg-slate-800/50">
+        <span class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold block">Tahmini Getiri</span>
+        <span class="font-num text-xs font-bold text-profit">${expectedReturn}</span>
       </div>
-      <div class="progress-track"><div class="progress-fill" style="width:${result.riskScore}%; background:${riskColor};"></div></div>
+      <div class="rounded-xl border border-slate-100 dark:border-slate-800 p-2.5 bg-slate-50 dark:bg-slate-800/50">
+        <span class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold block">Önerilen Vade</span>
+        <span class="font-num text-xs font-bold text-accent dark:text-indigo-300">${horizon}</span>
+      </div>
     </div>
 
-    <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">${result.summary}</p>
+    <div class="rounded-xl border border-slate-100 dark:border-slate-800 p-3 bg-slate-50 dark:bg-slate-800/50 mb-3">
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Risk Skoru</span>
+        <span class="font-num text-sm font-bold" style="color:${riskColor}">${riskScore}/100</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${riskScore}%; background:${riskColor};"></div></div>
+    </div>
+
+    <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3">${summary}</p>
 
     <div>
-      <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Önerilen Portföy Dağılımı</p>
-      <div class="space-y-3">
+      <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Önerilen Varlık Dağılımı</p>
+      <div class="space-y-2">
         ${allocations.map((a, i) => `
-          <div class="rounded-xl border border-slate-100 dark:border-slate-800 p-2.5">
+          <div class="rounded-xl border border-slate-100 dark:border-slate-800 p-2 bg-white dark:bg-slate-900">
             <div class="flex items-center justify-between text-xs mb-1">
-              <span class="font-semibold">${a.symbol ? a.symbol + ' · ' : ''}${a.name}</span>
-              <span class="font-num text-slate-400">${a.weight}%</span>
+              <span class="font-semibold">${a.name}</span>
+              <span class="font-num text-slate-400">%${a.weight}</span>
             </div>
-            <div class="progress-track mb-1.5"><div class="progress-fill" style="width:${a.weight}%; background:${allocColors[i % allocColors.length]};"></div></div>
-            ${a.reason ? `<p class="text-[11px] text-slate-400 dark:text-slate-500 leading-snug">${a.reason}</p>` : ''}
+            <div class="progress-track"><div class="progress-fill" style="width:${a.weight}%; background:${allocColors[i % allocColors.length]};"></div></div>
           </div>
         `).join('')}
       </div>
     </div>
-    ${result.mock ? '<p class="text-[10px] text-slate-300 dark:text-slate-600 text-right">demo veri · backend bağlı değil</p>' : ''}
+
+    <button onclick="openAiReportModal()" class="mt-3 w-full flex items-center justify-center gap-2 text-xs font-semibold text-accent border border-indigo-200 rounded-xl py-2.5 hover:bg-indigo-50 transition">
+      🔍 Ayrıntılı Hedge Fund AI Raporunu Gör
+    </button>
   `;
 }
 
 /* ===================================================================
-   NEWS & AI ANALYSIS MODAL
+   CANLI BORSA HABERLERİ
 =================================================================== */
 async function loadNews() {
-  const remote = await apiCall(SPRING_API, '/market/news', {}, null);
-  const news = remote && remote.length ? remote : MOCK_NEWS;
+  const remote = await apiCall(SPRING_API, '/market/news', {}, null) || await apiCall(FASTAPI_API, '/market/news', {}, null);
+  const news = remote && remote.length ? remote : [
+    { title: "BIST100 Bilanço Sezonunda Hacim İvmesi Korunuyor", source: "Bloomberg HT", time: "Son Dakika", sentiment: "bullish", summary: "Piyasalarda hacim yüksek.", aiAnalysis: "🎯 Etkilenen Varlıklar: BIST100\n📊 Piyasa Yönü: Pozitif\n💡 Strateji: AL/TUT" }
+  ];
   state.newsCache = news;
   const el = document.getElementById('newsList');
+  if (!el) return;
 
-  el.innerHTML = news.map((n, i) => {
-    const isBull = n.sentiment === 'bullish';
-    return `
-      <div class="news-card pb-3 border-b border-slate-100 dark:border-slate-800 last:border-0 last:pb-0" onclick="openNewsModal(${i})">
-        <div class="flex items-start justify-between gap-2">
-          <p class="text-xs font-medium leading-snug">${n.title}</p>
-          <span class="badge shrink-0 ${isBull ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400'}">
-            ${isBull ? '▲ BULLISH' : '▼ BEARISH'}
-          </span>
-        </div>
-        <p class="text-[10px] text-slate-400 mt-1.5 font-num">${n.source} · ${n.time} önce</p>
+  el.innerHTML = news.map((n, i) => `
+    <div class="news-card pb-3 border-b border-slate-100 dark:border-slate-800 last:border-0 last:pb-0" onclick="openNewsModal(${i})">
+      <div class="flex items-start justify-between gap-2">
+        <p class="text-xs font-medium leading-snug">${n.title}</p>
+        <span class="badge shrink-0 ${n.sentiment === 'bullish' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}">
+          ${n.sentiment === 'bullish' ? '▲ BULLISH' : '▼ BEARISH'}
+        </span>
       </div>
-    `;
-  }).join('');
+      <p class="text-[10px] text-slate-400 mt-1.5 font-num">${n.source} · ${n.time}</p>
+    </div>
+  `).join('');
 }
 
 function openNewsModal(index) {
   const n = state.newsCache[index];
   if (!n) return;
-  const isBull = n.sentiment === 'bullish';
-
-  const sentimentEl = document.getElementById('newsModalSentiment');
-  sentimentEl.innerText = isBull ? '▲ BULLISH' : '▼ BEARISH';
-  sentimentEl.className = 'badge ' + (isBull ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400');
-
   document.getElementById('newsModalTitle').innerText = n.title;
-  document.getElementById('newsModalMeta').innerText = `${n.source} · ${n.time} önce`;
+  document.getElementById('newsModalMeta').innerText = `${n.source} · ${n.time}`;
   document.getElementById('newsModalSummary').innerText = n.summary || n.title;
-  document.getElementById('newsModalAi').innerText = n.aiAnalysis ||
-    (isBull ? 'Bu gelişme genel piyasa görünümü için destekleyici sinyaller taşıyor; ilgili pozisyonlarınız olumlu etkilenebilir.'
-            : 'Bu gelişme kısa vadede oynaklığı artırabilir; ilgili pozisyonlarınızı yakından izlemenizi öneririz.');
-
+  
+  const aiText = n.aiAnalysis || 'Piyasa etki analizi yükleniyor...';
+  document.getElementById('newsModalAi').innerText = aiText;
+  
   document.getElementById('newsModal').classList.remove('hidden');
 }
-function closeNewsModal() {
-  document.getElementById('newsModal').classList.add('hidden');
+function closeNewsModal() { document.getElementById('newsModal').classList.add('hidden'); }
+
+/* ===================================================================
+   PROFİL & GEÇMİŞ İŞLEMLER
+=================================================================== */
+function toggleProfileMenu() { document.getElementById('profileMenu').classList.toggle('hidden'); }
+function closeProfileMenu() { document.getElementById('profileMenu').classList.add('hidden'); }
+
+function openProfileModal() {
+  closeProfileMenu();
+  const p = getUserPortfolio();
+  const holdings = p.holdings || [];
+  const totalTry = holdings.reduce((s, h) => s + ((h.price || h.avgCost) * h.qty || 0), 0) + (p.cashTry || 0);
+  document.getElementById('profileTotalAssets').innerText = fmtTry(totalTry);
+  document.getElementById('profileCash').innerText = fmtTry(p.cashTry || 0);
+  document.getElementById('profilePositions').innerText = holdings.length;
+  document.getElementById('profileModal').classList.remove('hidden');
 }
+function closeProfileModal() { document.getElementById('profileModal').classList.add('hidden'); }
+
+function openTransactionHistoryModal() {
+  closeProfileMenu();
+  document.getElementById('txHistoryModal').classList.remove('hidden');
+  renderTxHistory(state.transactions);
+}
+function closeTxHistoryModal() { document.getElementById('txHistoryModal').classList.add('hidden'); }
+
+function renderTxHistory(rows) {
+  const el = document.getElementById('txHistoryBody');
+  if (!el) return;
+  if (!rows.length) {
+    el.innerHTML = `<tr><td colspan="6" class="text-center text-sm text-slate-400 py-10">Henüz işlem yapılmadı. Emir kutusundan işlem gerçekleştirebilirsiniz.</td></tr>`;
+    return;
+  }
+  el.innerHTML = rows.map(t => {
+    const total = t.qty * t.price;
+    const d = new Date(t.date);
+    const dateStr = d.toLocaleDateString('tr-TR', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' });
+    return `
+      <tr class="hover:bg-slate-50 transition">
+        <td class="px-6 py-3"><span class="badge ${t.type === 'AL' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}">${t.type}</span></td>
+        <td class="px-3 py-3 text-sm font-semibold">${t.symbol}</td>
+        <td class="px-3 py-3 text-right font-num text-sm">${t.qty.toFixed(2)}</td>
+        <td class="px-3 py-3 text-right font-num text-sm">${fmtByCurrency(t.price, t.currency)}</td>
+        <td class="px-3 py-3 text-right font-num text-sm font-semibold">${fmtByCurrency(total, t.currency)}</td>
+        <td class="px-6 py-3 text-right font-num text-[11px] text-slate-400">${dateStr}</td>
+      </tr>`;
+  }).join('');
+}
+
+/* ===================================================================
+   DEV HEDGE FUND AI RAPOR MODALI
+=================================================================== */
+function openAiReportModal() {
+  const result = state.lastAiResult;
+  if (!result) return;
+
+  document.getElementById('aiReportDate').innerText = 'Oluşturulma: ' + new Date().toLocaleString('tr-TR');
+  document.getElementById('aiReportScenario').innerText = state.lastAiScenario ? `"${state.lastAiScenario}"` : '-';
+  document.getElementById('aiReportSummary').innerText = result.executive_summary || '-';
+
+  const rawRisk = result.risk_score_out_of_10 ?? 6;
+  const riskScore = rawRisk <= 10 ? rawRisk * 10 : rawRisk;
+  const riskColor = riskScore >= 70 ? '#ef4444' : riskScore >= 40 ? '#f59e0b' : '#10b981';
+  const riskLabel = riskScore >= 70 ? 'Yüksek Risk İştahı' : riskScore >= 40 ? 'Orta Risk İştahı' : 'Düşük Risk İştahı';
+
+  document.getElementById('aiReportRisk').innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-semibold" style="color:${riskColor}">${riskLabel}</span>
+      <span class="font-num text-lg font-bold" style="color:${riskColor}">${riskScore}/100</span>
+    </div>
+    <div class="progress-track mb-3"><div class="progress-fill" style="width:${riskScore}%; background:${riskColor};"></div></div>
+  `;
+
+  const allocColors = ['#4338ca', '#10b981', '#f59e0b', '#0ea5e9', '#ec4899'];
+  let allocations = [];
+  if (result.portfolio_allocation_percent && typeof result.portfolio_allocation_percent === 'object') {
+    allocations = Object.entries(result.portfolio_allocation_percent).map(([key, val]) => ({ name: key, weight: val }));
+  }
+
+  document.getElementById('aiReportSectors').innerHTML = allocations.map((a, i) => `
+    <div class="mb-4 last:mb-0">
+      <div class="flex items-center justify-between text-sm mb-1.5">
+        <span class="font-semibold">${a.name}</span>
+        <span class="font-num text-slate-400">%${a.weight}</span>
+      </div>
+      <div class="progress-track mb-1.5"><div class="progress-fill" style="width:${a.weight}%; background:${allocColors[i % allocColors.length]};"></div></div>
+    </div>
+  `).join('');
+
+  const proj = generateProjectionData(riskScore);
+  renderProjectionChart(proj);
+
+  document.getElementById('aiReportModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closeAiReportModal() {
+  document.getElementById('aiReportModal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function generateProjectionData(riskScore) {
+  const months = 24;
+  const monthlyBase = 0.004 + (riskScore / 100) * 0.010;
+  const vol = 0.006 + (riskScore / 100) * 0.028;
+  const now = new Date();
+
+  const labels = [now.toLocaleDateString('tr-TR', { month:'short', year:'2-digit' })];
+  const base = [100], opt = [100], pes = [100];
+  let b = 100, o = 100, p = 100;
+
+  for (let i = 1; i <= months; i++) {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() + i);
+    labels.push(d.toLocaleDateString('tr-TR', { month:'short', year:'2-digit' }));
+    b *= (1 + monthlyBase);
+    o *= (1 + monthlyBase + vol * 0.55);
+    p *= (1 + monthlyBase - vol * 0.75);
+    base.push(b);
+    opt.push(o);
+    pes.push(Math.max(p, 35));
+  }
+  return { labels, base, opt, pes };
+}
+
+let aiProjectionChartInstance = null;
+function renderProjectionChart(proj) {
+  const ctx = document.getElementById('aiProjectionChart').getContext('2d');
+  if (aiProjectionChartInstance) aiProjectionChartInstance.destroy();
+
+  aiProjectionChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: proj.labels,
+      datasets: [
+        { label:'İyimser', data: proj.opt, borderColor:'#10b981', backgroundColor:'transparent', borderWidth:2, pointRadius:0, tension:.02 },
+        { label:'Baz Senaryo', data: proj.base, borderColor:'#4338ca', backgroundColor:'transparent', borderWidth:2.5, pointRadius:0, tension:.02 },
+        { label:'Kötümser', data: proj.pes, borderColor:'#ef4444', backgroundColor:'transparent', borderWidth:2, pointRadius:0, tension:.02, borderDash:[5,4] },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      scales: { x: { grid: { display: false } }, y: { grid: { color: '#f1f5f9' } } }
+    }
+  });
+}
+
+/* ===================================================================
+   E-POSTA REGEX DOĞRULAMALI AUTH
+=================================================================== */
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+function handleLogout() {
+  closeProfileMenu();
+  const user = getUserState();
+  user.loggedIn = false;
+  saveUserState(user);
+  openAuthModal('login');
+  loadPortfolio();
+}
+
+function openAuthModal(tab = 'login') {
+  switchAuthTab(tab);
+  document.getElementById('authModal').classList.remove('hidden');
+}
+function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('authLoginForm').classList.toggle('hidden', !isLogin);
+  document.getElementById('authRegisterForm').classList.toggle('hidden', isLogin);
+  document.getElementById('authTabLogin').className = 'auth-tab flex-1 text-sm font-semibold pb-3 border-b-2 ' + (isLogin ? 'border-accent text-accent' : 'border-transparent text-slate-400');
+  document.getElementById('authTabRegister').className = 'auth-tab flex-1 text-sm font-semibold pb-3 border-b-2 ' + (!isLogin ? 'border-accent text-accent' : 'border-transparent text-slate-400');
+  document.getElementById('authMsg').classList.add('hidden');
+}
+
+async function submitLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const msgEl = document.getElementById('authMsg');
+
+  if (!email || !password) {
+    msgEl.className = 'text-xs mt-3 text-loss';
+    msgEl.innerText = 'Lütfen e-posta ve şifrenizi girin.';
+    msgEl.classList.remove('hidden');
+    return;
+  }
+
+  if (!validateEmail(email)) {
+    msgEl.className = 'text-xs mt-3 text-loss';
+    msgEl.innerText = 'Geçersiz e-posta formatı! (Örn: ad@domain.com)';
+    msgEl.classList.remove('hidden');
+    return;
+  }
+
+  const nameStr = email.split('@')[0].replace('.', ' ');
+  const formattedName = nameStr.charAt(0).toUpperCase() + nameStr.slice(1);
+  const initials = formattedName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'BE';
+
+  saveUserState({ name: formattedName, email, initials, loggedIn: true });
+
+  msgEl.className = 'text-xs mt-3 text-profit';
+  msgEl.innerText = `Giriş başarılı, hoş geldiniz!`;
+  msgEl.classList.remove('hidden');
+  
+  await loadPortfolio();
+  setTimeout(closeAuthModal, 600);
+}
+
+async function submitRegister() {
+  const name = document.getElementById('registerName').value.trim();
+  const email = document.getElementById('registerEmail').value.trim();
+  const password = document.getElementById('registerPassword').value;
+  const msgEl = document.getElementById('authMsg');
+
+  if (!name || !email || !password) {
+    msgEl.className = 'text-xs mt-3 text-loss';
+    msgEl.innerText = 'Lütfen tüm alanları doldurun.';
+    msgEl.classList.remove('hidden');
+    return;
+  }
+
+  if (!validateEmail(email)) {
+    msgEl.className = 'text-xs mt-3 text-loss';
+    msgEl.innerText = 'Lütfen geçerli bir e-posta adresi yazın! (Örn: ad@soyad.com)';
+    msgEl.classList.remove('hidden');
+    return;
+  }
+
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'BE';
+  saveUserState({ name, email, initials, loggedIn: true });
+
+  msgEl.className = 'text-xs mt-3 text-profit';
+  msgEl.innerText = `Kayıt oluşturuldu, hesabınıza aktarılıyorsunuz...`;
+  msgEl.classList.remove('hidden');
+  
+  await loadPortfolio();
+  setTimeout(closeAuthModal, 600);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    ['walletModal', 'newsModal', 'authModal', 'profileModal', 'txHistoryModal', 'aiReportModal'].forEach(id => {
+      const modalEl = document.getElementById(id);
+      if (modalEl) modalEl.classList.add('hidden');
+    });
+    document.body.style.overflow = '';
+  }
+});
 </script>
-</body>
-</html>

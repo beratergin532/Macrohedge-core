@@ -6,22 +6,25 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/trade")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class TradingController {
 
     private final TradingService tradingService;
 
     @PostMapping("/buy")
-    public ResponseEntity<String> buyStock(@RequestBody TradeRequest request) {
+    public ResponseEntity<?> buyStock(@RequestBody TradeRequest request) {
         tradingService.buyStock(request);
-        return ResponseEntity.ok("Hisse alım işlemi başarıyla gerçekleşti.");
+        return ResponseEntity.ok(Map.of("success", true, "message", "Hisse alım işlemi başarıyla gerçekleşti."));
     }
 
     @PostMapping("/sell")
-    public ResponseEntity<String> sellStock(@RequestBody TradeRequest request) {
+    public ResponseEntity<?> sellStock(@RequestBody TradeRequest request) {
         tradingService.sellStock(request);
-        return ResponseEntity.ok("Hisse satım işlemi başarıyla gerçekleşti.");
+        return ResponseEntity.ok(Map.of("success", true, "message", "Hisse satım işlemi başarıyla gerçekleşti."));
     }
 }
